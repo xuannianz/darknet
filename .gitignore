@@ -25,3 +25,9 @@ ehthumbs.db
 Icon?
 Thumbs.db
 *.swp
+*.weights
+.idea/
+libdarknet.a
+libdarknet.so
+darknet_gpu
+compile_commands.json

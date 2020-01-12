@@ -56,7 +56,8 @@ network *load_network(char *cfg, char *weights, int clear)
     if(weights && weights[0] != 0){
         load_weights(net, weights);
     }
-    if(clear) (*net->seen) = 0;
+    if(clear)
+        (*net->seen) = 0;
     return net;
 }
 
@@ -179,6 +180,7 @@ network *make_network(int n)
     network *net = calloc(1, sizeof(network));
     net->n = n;
     net->layers = calloc(net->n, sizeof(layer));
+    // unclear: 这三个单个元素, 为什么要使用动态分配内存的方式?
     net->seen = calloc(1, sizeof(size_t));
     net->t    = calloc(1, sizeof(int));
     net->cost = calloc(1, sizeof(float));

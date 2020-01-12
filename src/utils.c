@@ -113,7 +113,10 @@ int *random_index_order(int min, int max)
 void del_arg(int argc, char **argv, int index)
 {
     int i;
-    for(i = index; i < argc-1; ++i) argv[i] = argv[i+1];
+    // delete argument at index
+    for(i = index; i < argc-1; ++i)
+        argv[i] = argv[i+1];
+    // append NULL to keep argc unchanged
     argv[i] = 0;
 }
 
@@ -134,10 +137,14 @@ int find_int_arg(int argc, char **argv, char *arg, int def)
 {
     int i;
     for(i = 0; i < argc-1; ++i){
-        if(!argv[i]) continue;
-        if(0==strcmp(argv[i], arg)){
+        if(!argv[i])
+            continue;
+        if(0 == strcmp(argv[i], arg)){
+            // get option value
             def = atoi(argv[i+1]);
+            // del the option
             del_arg(argc, argv, i);
+            // del option value
             del_arg(argc, argv, i);
             break;
         }
@@ -164,8 +171,9 @@ char *find_char_arg(int argc, char **argv, char *arg, char *def)
 {
     int i;
     for(i = 0; i < argc-1; ++i){
-        if(!argv[i]) continue;
-        if(0==strcmp(argv[i], arg)){
+        if(!argv[i])
+            continue;
+        if(0 == strcmp(argv[i], arg)){
             def = argv[i+1];
             del_arg(argc, argv, i);
             del_arg(argc, argv, i);
@@ -299,17 +307,21 @@ list *split_str(char *s, char delim)
     return l;
 }
 
+// 去掉 s 中的所有 ' ', '\t' 和 '\n'
 void strip(char *s)
 {
     size_t i;
     size_t len = strlen(s);
     size_t offset = 0;
     for(i = 0; i < len; ++i){
+        // 遍历的过程中, i 表示字符的个数, offset 表示 whitespace 字符的个数, i - offset 表示非 whitespace 的字符个数
         char c = s[i];
-        if(c==' '||c=='\t'||c=='\n') ++offset;
-        else s[i-offset] = c;
+        if(c == ' ' || c == '\t' || c=='\n')
+            ++offset;
+        else
+            s[i - offset] = c;
     }
-    s[len-offset] = '\0';
+    s[len - offset] = '\0';
 }
 
 void strip_char(char *s, char bad)
@@ -334,9 +346,12 @@ void free_ptrs(void **ptrs, int n)
 
 char *fgetl(FILE *fp)
 {
-    if(feof(fp)) return 0;
+    if(feof(fp))
+        return 0;
     size_t size = 512;
-    char *line = malloc(size*sizeof(char));
+    char *line = malloc(size * sizeof(char));
+    // fgets 最多读取 size-1 个字符, 确保以 '\0' 结尾
+    // unclear: 上面已经判断了没有到达文件的末尾, 按道理还有内容可读啊, 还需要判断吗?
     if(!fgets(line, size, fp)){
         free(line);
         return 0;
@@ -344,21 +359,29 @@ char *fgetl(FILE *fp)
 
     size_t curr = strlen(line);
 
-    while((line[curr-1] != '\n') && !feof(fp)){
-        if(curr == size-1){
+    // note: 当文件的最后一行不是空行, 那么最后一行不包含 '\n'. fgets 会读完 EOF 之前的内容, 返回是 buffer 的地址.
+    //  然后再调 feof 会返回 1.
+    // 下面是判断是否 buffer size 太小, 不够容纳这一行的内容
+    while((line[curr - 1] != '\n') && !feof(fp)){
+        // 判断是否读满了. 很远的后来, size 非常大, 要分几次 readsize 来读, 读一次并不能把分配的空间读满
+        if(curr == size - 1){
             size *= 2;
-            line = realloc(line, size*sizeof(char));
+            line = realloc(line, size * sizeof(char));
             if(!line) {
                 printf("%ld\n", size);
                 malloc_error();
             }
         }
-        size_t readsize = size-curr;
-        if(readsize > INT_MAX) readsize = INT_MAX-1;
+        // size_t 是 unsigned long, fgets 的第二个参数是 int, 所以要限制一下值的范围
+        size_t readsize = size - curr;
+        if(readsize > INT_MAX)
+            readsize = INT_MAX - 1;
         fgets(&line[curr], readsize, fp);
         curr = strlen(line);
     }
-    if(line[curr-1] == '\n') line[curr-1] = '\0';
+    // 去掉换行符
+    if(line[curr - 1] == '\n')
+        line[curr - 1] = '\0';
 
     return line;
 }
@@ -665,7 +688,8 @@ float rand_normal()
     haveSpare = 1;
 
     rand1 = rand() / ((double) RAND_MAX);
-    if(rand1 < 1e-100) rand1 = 1e-100;
+    if(rand1 < 1e-100)
+        rand1 = 1e-100;
     rand1 = -2 * log(rand1);
     rand2 = (rand() / ((double) RAND_MAX)) * TWO_PI;
 

@@ -7,14 +7,16 @@
 list *read_data_cfg(char *filename)
 {
     FILE *file = fopen(filename, "r");
-    if(file == 0) file_error(filename);
+    if(file == 0)
+        file_error(filename);
     char *line;
     int nu = 0;
     list *options = make_list();
-    while((line=fgetl(file)) != 0){
+    while((line = fgetl(file)) != 0){
         ++ nu;
         strip(line);
         switch(line[0]){
+            // 去掉空行和以 '#', ';' 开头的行
             case '\0':
             case '#':
             case ';':
@@ -57,11 +59,12 @@ int read_option(char *s, list *options)
     for(i = 0; i < len; ++i){
         if(s[i] == '='){
             s[i] = '\0';
-            val = s+i+1;
+            val = s + i + 1;
             break;
         }
     }
-    if(i == len-1) return 0;
+    if(i == len - 1)
+        return 0;
     char *key = s;
     option_insert(options, key, val);
     return 1;
@@ -104,15 +107,18 @@ char *option_find(list *l, char *key)
 char *option_find_str(list *l, char *key, char *def)
 {
     char *v = option_find(l, key);
-    if(v) return v;
-    if(def) fprintf(stderr, "%s: Using default '%s'\n", key, def);
+    if(v)
+        return v;
+    if(def)
+        fprintf(stderr, "%s: Using default '%s'\n", key, def);
     return def;
 }
 
 int option_find_int(list *l, char *key, int def)
 {
     char *v = option_find(l, key);
-    if(v) return atoi(v);
+    if(v)
+        return atoi(v);
     fprintf(stderr, "%s: Using default '%d'\n", key, def);
     return def;
 }
@@ -120,7 +126,8 @@ int option_find_int(list *l, char *key, int def)
 int option_find_int_quiet(list *l, char *key, int def)
 {
     char *v = option_find(l, key);
-    if(v) return atoi(v);
+    if(v)
+        return atoi(v);
     return def;
 }
 
@@ -134,7 +141,8 @@ float option_find_float_quiet(list *l, char *key, float def)
 float option_find_float(list *l, char *key, float def)
 {
     char *v = option_find(l, key);
-    if(v) return atof(v);
+    if(v)
+        return atof(v);
     fprintf(stderr, "%s: Using default '%lf'\n", key, def);
     return def;
 }

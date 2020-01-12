@@ -44,12 +44,15 @@ void list_insert(list *l, void *val)
 	new->next = 0;
 
 	if(!l->back){
+	    // 如果 list 为空
 		l->front = new;
 		new->prev = 0;
 	}else{
+	    // 如果 list 不为空, 添加到最后
 		l->back->next = new;
 		new->prev = l->back;
 	}
+	// 更新 l->back, 使其指向末尾节点
 	l->back = new;
 	++l->size;
 }

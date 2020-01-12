@@ -406,7 +406,9 @@ int main(int argc, char **argv)
         fprintf(stderr, "usage: %s <function>\n", argv[0]);
         return 0;
     }
+    // -i to specify which card to use
     gpu_index = find_int_arg(argc, argv, "-i", 0);
+    // --nogpu if GPU is enable but do not want to use
     if(find_arg(argc, argv, "-nogpu")) {
         gpu_index = -1;
     }

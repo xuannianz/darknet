@@ -224,7 +224,8 @@ image **load_alphabet()
 {
     int i, j;
     const int nsize = 8;
-    image **alphabets = calloc(nsize, sizeof(image));
+    // adam: sizeof(image) --> sizeof(image *)
+    image **alphabets = calloc(nsize, sizeof(image *));
     for(j = 0; j < nsize; ++j){
         alphabets[j] = calloc(128, sizeof(image));
         for(i = 32; i < 127; ++i){
@@ -607,8 +608,8 @@ image make_empty_image(int w, int h, int c)
 
 image make_image(int w, int h, int c)
 {
-    image out = make_empty_image(w,h,c);
-    out.data = calloc(h*w*c, sizeof(float));
+    image out = make_empty_image(w, h, c);
+    out.data = calloc(h * w * c, sizeof(float));
     return out;
 }
 
@@ -1293,17 +1294,20 @@ void test_resize(char *filename)
 image load_image_stb(char *filename, int channels)
 {
     int w, h, c;
+    // stbi_load 得到的数据的存放顺序是 c,w,h, c 的顺序是 RGB
     unsigned char *data = stbi_load(filename, &w, &h, &c, channels);
     if (!data) {
         fprintf(stderr, "Cannot load image \"%s\"\nSTB Reason: %s\n", filename, stbi_failure_reason());
         exit(0);
     }
-    if(channels) c = channels;
+    if(channels)
+        c = channels;
     int i,j,k;
     image im = make_image(w, h, c);
     for(k = 0; k < c; ++k){
         for(j = 0; j < h; ++j){
             for(i = 0; i < w; ++i){
+                // 存放成 w,h,c 的顺序
                 int dst_index = i + w*j + w*h*k;
                 int src_index = k + c*i + c*w*j;
                 im.data[dst_index] = (float)data[src_index]/255.;

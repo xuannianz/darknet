@@ -559,7 +559,8 @@ void validate_detector_recall(char *cfgfile, char *weightfile)
 }
 
 
-void test_detector(char *datacfg, char *cfgfile, char *weightfile, char *filename, float thresh, float hier_thresh, char *outfile, int fullscreen)
+void test_detector(char *datacfg, char *cfgfile, char *weightfile, char *filename, float thresh, float hier_thresh,
+        char *outfile, int fullscreen)
 {
     list *options = read_data_cfg(datacfg);
     char *name_list = option_find_str(options, "names", "data/names.list");
@@ -589,7 +590,7 @@ void test_detector(char *datacfg, char *cfgfile, char *weightfile, char *filenam
         //image sized2 = resize_max(im, net->w);
         //image sized = crop_image(sized2, -((net->w - sized2.w)/2), -((net->h - sized2.h)/2), net->w, net->h);
         //resize_network(net, sized.w, sized.h);
-        layer l = net->layers[net->n-1];
+        layer l = net->layers[net->n - 1];
 
 
         float *X = sized.data;
@@ -600,7 +601,8 @@ void test_detector(char *datacfg, char *cfgfile, char *weightfile, char *filenam
         detection *dets = get_network_boxes(net, im.w, im.h, thresh, hier_thresh, 0, 1, &nboxes);
         //printf("%d\n", nboxes);
         //if (nms) do_nms_obj(boxes, probs, l.w*l.h*l.n, l.classes, nms);
-        if (nms) do_nms_sort(dets, nboxes, l.classes, nms);
+        if (nms)
+            do_nms_sort(dets, nboxes, l.classes, nms);
         draw_detections(im, dets, nboxes, thresh, names, alphabet, l.classes);
         free_detections(dets, nboxes);
         if(outfile){
@@ -788,6 +790,7 @@ void network_detect(network *net, image im, float thresh, float hier_thresh, flo
 
 void run_detector(int argc, char **argv)
 {
+    // unclear: prefix, hier_thresh, frame_skip, avg
     char *prefix = find_char_arg(argc, argv, "-prefix", 0);
     float thresh = find_float_arg(argc, argv, "-thresh", .5);
     float hier_thresh = find_float_arg(argc, argv, "-hier", .5);
@@ -798,8 +801,10 @@ void run_detector(int argc, char **argv)
         fprintf(stderr, "usage: %s %s [train/test/valid] [cfg] [weights (optional)]\n", argv[0], argv[1]);
         return;
     }
+    // like "0,1,2,3"
     char *gpu_list = find_char_arg(argc, argv, "-gpus", 0);
     char *outfile = find_char_arg(argc, argv, "-out", 0);
+    // 存放 int 类型的 gpu id
     int *gpus = 0;
     int gpu = 0;
     int ngpus = 0;
@@ -809,12 +814,14 @@ void run_detector(int argc, char **argv)
         ngpus = 1;
         int i;
         for(i = 0; i < len; ++i){
-            if (gpu_list[i] == ',') ++ngpus;
+            if (gpu_list[i] == ',')
+                ++ngpus;
         }
         gpus = calloc(ngpus, sizeof(int));
         for(i = 0; i < ngpus; ++i){
+            // 把 gpu_list 的第一个字符到第一个非数字字符的部分转成 int
             gpus[i] = atoi(gpu_list);
-            gpu_list = strchr(gpu_list, ',')+1;
+            gpu_list = strchr(gpu_list, ',') + 1;
         }
     } else {
         gpu = gpu_index;
@@ -833,12 +840,17 @@ void run_detector(int argc, char **argv)
     char *cfg = argv[4];
     char *weights = (argc > 5) ? argv[5] : 0;
     char *filename = (argc > 6) ? argv[6]: 0;
-    if(0==strcmp(argv[2], "test")) test_detector(datacfg, cfg, weights, filename, thresh, hier_thresh, outfile, fullscreen);
-    else if(0==strcmp(argv[2], "train")) train_detector(datacfg, cfg, weights, gpus, ngpus, clear);
-    else if(0==strcmp(argv[2], "valid")) validate_detector(datacfg, cfg, weights, outfile);
-    else if(0==strcmp(argv[2], "valid2")) validate_detector_flip(datacfg, cfg, weights, outfile);
-    else if(0==strcmp(argv[2], "recall")) validate_detector_recall(cfg, weights);
-    else if(0==strcmp(argv[2], "demo")) {
+    if(0 == strcmp(argv[2], "test"))
+        test_detector(datacfg, cfg, weights, filename, thresh, hier_thresh, outfile, fullscreen);
+    else if(0 == strcmp(argv[2], "train"))
+        train_detector(datacfg, cfg, weights, gpus, ngpus, clear);
+    else if(0 == strcmp(argv[2], "valid"))
+        validate_detector(datacfg, cfg, weights, outfile);
+    else if(0 == strcmp(argv[2], "valid2"))
+        validate_detector_flip(datacfg, cfg, weights, outfile);
+    else if(0 == strcmp(argv[2], "recall"))
+        validate_detector_recall(cfg, weights);
+    else if(0 == strcmp(argv[2], "demo")) {
         list *options = read_data_cfg(datacfg);
         int classes = option_find_int(options, "classes", 20);
         char *name_list = option_find_str(options, "names", "data/names.list");

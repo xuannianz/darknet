@@ -75,14 +75,18 @@ void gemm_nn(int M, int N, int K, float ALPHA,
         float *A, int lda, 
         float *B, int ldb,
         float *C, int ldc)
+// M: oc/g N: oh*ow, K: k*k*c/g
+// lda: k*k*c/g ldb: oh*ow ldc: oh*ow
+// 不考虑 g 时, 可以看做是 (oc, k*k*c) 和 (k*k*c, oh*ow) 两个矩阵相乘, 得到 (oc, oh*ow) 的矩阵
+// 考虑 g 时, 可以看做是 (oc/g, k*k*c/g) 和 (k*k*c/g, oh*ow) 两个矩阵相乘, 得到 (oc/g, oh*ow) 的矩阵
 {
-    int i,j,k;
+    int i, j, k;
     #pragma omp parallel for
     for(i = 0; i < M; ++i){
         for(k = 0; k < K; ++k){
-            register float A_PART = ALPHA*A[i*lda+k];
+            register float A_PART = ALPHA * A[i * lda + k];
             for(j = 0; j < N; ++j){
-                C[i*ldc+j] += A_PART*B[k*ldb+j];
+                C[i * ldc + j] += A_PART * B[k * ldb + j];
             }
         }
     }
