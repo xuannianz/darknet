@@ -847,6 +847,7 @@ network *parse_network_cfg(char *filename) {
         l.smooth = option_find_float_quiet(options, "smooth", 0);
         option_unused(options);
         net->layers[count] = l;
+        // 遍历的过程中, 寻找最大的 workspace_size
         if (l.workspace_size > workspace_size)
             workspace_size = l.workspace_size;
         free_section(s);

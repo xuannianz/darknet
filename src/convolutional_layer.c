@@ -471,7 +471,7 @@ void forward_convolutional_layer(convolutional_layer l, network net)
         for(j = 0; j < l.groups; ++j){
             // 把 weights 强行分成 l.groups 个组
             float *a = l.weights + j * l.nweights / l.groups;
-            // unclear: workspace 是在哪里初始化的?
+            // unclear: workspace 是在哪里初始化的? parse_network_cfg 时分配的
             float *b = net.workspace;
             // n * m 把所有输出分成 b * l.groups 个组
             float *c = l.output + (i * l.groups + j) * n * m;
@@ -515,34 +515,34 @@ void backward_convolutional_layer(convolutional_layer l, network net)
 
     for(i = 0; i < l.batch; ++i){
         for(j = 0; j < l.groups; ++j){
-            float *a = l.delta + (i*l.groups + j)*m*k;
+            float *a = l.delta + (i * l.groups + j) * m * k;
             float *b = net.workspace;
-            float *c = l.weight_updates + j*l.nweights/l.groups;
+            float *c = l.weight_updates + j * l.nweights / l.groups;
 
-            float *im  = net.input + (i*l.groups + j)*l.c/l.groups*l.h*l.w;
-            float *imd = net.delta + (i*l.groups + j)*l.c/l.groups*l.h*l.w;
+            float *im  = net.input + (i * l.groups + j) * l.c / l.groups * l.h * l.w;
+            float *imd = net.delta + (i * l.groups + j) * l.c / l.groups * l.h * l.w;
 
             if(l.size == 1){
                 b = im;
             } else {
-                im2col_cpu(im, l.c/l.groups, l.h, l.w,
-                        l.size, l.stride, l.pad, b);
+                im2col_cpu(im, l.c / l.groups, l.h, l.w, l.size, l.stride, l.pad, b);
             }
 
-            gemm(0,1,m,n,k,1,a,k,b,k,1,c,n);
+            gemm(0,1, m, n, k,1, a, k, b, k,1, c, n);
 
             if (net.delta) {
-                a = l.weights + j*l.nweights/l.groups;
-                b = l.delta + (i*l.groups + j)*m*k;
+                a = l.weights + j * l.nweights / l.groups;
+                b = l.delta + (i * l.groups + j) * m * k;
                 c = net.workspace;
                 if (l.size == 1) {
                     c = imd;
                 }
 
-                gemm(1,0,n,k,m,1,a,n,b,k,0,c,k);
+                // 得到的 c 相当于是 (oh*ow, k*k*c)
+                gemm(1,0, n, k, m,1, a, n, b, k,0, c, k);
 
                 if (l.size != 1) {
-                    col2im_cpu(net.workspace, l.c/l.groups, l.h, l.w, l.size, l.stride, l.pad, imd);
+                    col2im_cpu(net.workspace, l.c / l.groups, l.h, l.w, l.size, l.stride, l.pad, imd);
                 }
             }
         }

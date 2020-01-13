@@ -68,7 +68,7 @@ void gemm(int TA, int TB, int M, int N, int K, float ALPHA,
         float BETA,
         float *C, int ldc)
 {
-    gemm_cpu( TA,  TB,  M, N, K, ALPHA,A,lda, B, ldb,BETA,C,ldc);
+    gemm_cpu(TA, TB, M, N, K, ALPHA, A, lda, B, ldb, BETA, C, ldc);
 }
 
 void gemm_nn(int M, int N, int K, float ALPHA, 
@@ -96,16 +96,22 @@ void gemm_nt(int M, int N, int K, float ALPHA,
         float *A, int lda, 
         float *B, int ldb,
         float *C, int ldc)
+// M: oc/g, N: s*s*c/g, K: oh*ow
+// A: delta, 可以看做 (oc, oh*ow), lda: oh*ow
+// B: x, 可以看做 (oh*ow, s*s*c), ldb: oh*ow
+// C: dw, 可以看做 (oc, s*s*c), ldc: s*s*c/g
+// C 保存的就是 weight_updates
 {
-    int i,j,k;
+    int i, j, k;
     #pragma omp parallel for
     for(i = 0; i < M; ++i){
         for(j = 0; j < N; ++j){
             register float sum = 0;
             for(k = 0; k < K; ++k){
-                sum += ALPHA*A[i*lda+k]*B[j*ldb + k];
+                sum += ALPHA * A[i * lda + k] * B[j * ldb + k];
             }
-            C[i*ldc+j] += sum;
+            // unclear: 为什么不是直接赋值?
+            C[i * ldc + j] += sum;
         }
     }
 }
@@ -114,14 +120,18 @@ void gemm_tn(int M, int N, int K, float ALPHA,
         float *A, int lda, 
         float *B, int ldb,
         float *C, int ldc)
+// M: s*s*c/g, N: oh*ow, K: oc/g
+// A: weights (s*s*c, oc), lda: s*s*c
+// B: delta (oc, oh*ow), ldb: oh*ow
+// C: deltax (s*s*c, oh*ow), ldc: oh*ow
 {
-    int i,j,k;
+    int i, j, k;
     #pragma omp parallel for
     for(i = 0; i < M; ++i){
         for(k = 0; k < K; ++k){
-            register float A_PART = ALPHA*A[k*lda+i];
+            register float A_PART = ALPHA * A[k * lda + i];
             for(j = 0; j < N; ++j){
-                C[i*ldc+j] += A_PART*B[k*ldb+j];
+                C[i * ldc + j] += A_PART * B[k * ldb + j];
             }
         }
     }
@@ -156,7 +166,7 @@ void gemm_cpu(int TA, int TB, int M, int N, int K, float ALPHA,
     int i, j;
     for(i = 0; i < M; ++i){
         for(j = 0; j < N; ++j){
-            C[i*ldc + j] *= BETA;
+            C[i * ldc + j] *= BETA;
         }
     }
     if(!TA && !TB)

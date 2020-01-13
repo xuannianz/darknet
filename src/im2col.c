@@ -24,7 +24,7 @@ void im2col_cpu(float* data_im,
 
     // 一个卷积核覆盖的像素的个数, 简单表示为 k*k*c, 每个像素其实最后会和原图像的 oh*ow 个像素发生关系,
     // 因为卷积核会纵向移动 oh, 横向移动 ow, 那么与卷积核一个像素有关的 oh*ow 个原图像的像素组成一个特征图
-    // 那么就可以排列成 k*k*c 个 oh*ow 的特征图, 表示成 (oh*ow, k*k*c) 的二维数组后者 oh*ow*k*k*c 的一维数组
+    // 那么就可以排列成 k*k*c 个 oh*ow 的特征图, 表示成 (oh*ow, k*k*c) 的二维数组 或者 oh*ow*k*k*c 的一维数组
     int channels_col = channels * ksize * ksize;
     for (c = 0; c < channels_col; ++c) {
         // 卷积核中某个像素的位置
