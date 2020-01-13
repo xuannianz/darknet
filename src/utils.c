@@ -503,13 +503,14 @@ float sum_array(float *a, int n)
 {
     int i;
     float sum = 0;
-    for(i = 0; i < n; ++i) sum += a[i];
+    for(i = 0; i < n; ++i)
+        sum += a[i];
     return sum;
 }
 
 float mean_array(float *a, int n)
 {
-    return sum_array(a,n)/n;
+    return sum_array(a,n) / n;
 }
 
 void mean_arrays(float **a, int n, int els, float *avg)
@@ -657,7 +658,8 @@ int int_index(int *a, int val, int n)
 {
     int i;
     for(i = 0; i < n; ++i){
-        if(a[i] == val) return i;
+        if(a[i] == val)
+            return i;
     }
     return -1;
 }

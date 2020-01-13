@@ -223,7 +223,7 @@ void update_network(network *netp)
     network net = *netp;
     int i;
     update_args a = {0};
-    a.batch = net.batch*net.subdivisions;
+    a.batch = net.batch * net.subdivisions;
     a.learning_rate = get_current_rate(netp);
     a.momentum = net.momentum;
     a.decay = net.decay;
@@ -273,14 +273,16 @@ void backward_network(network *netp)
     network net = *netp;
     int i;
     network orig = net;
-    for(i = net.n-1; i >= 0; --i){
+    for(i = net.n - 1; i >= 0; --i){
         layer l = net.layers[i];
-        if(l.stopbackward) break;
+        if(l.stopbackward)
+            break;
         if(i == 0){
             net = orig;
         }else{
-            layer prev = net.layers[i-1];
+            layer prev = net.layers[i - 1];
             net.input = prev.output;
+            // 当前层会把计算结果存到 net.delta, 就是上一层的 l.delta
             net.delta = prev.delta;
         }
         net.index = i;

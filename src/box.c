@@ -92,9 +92,9 @@ box float_to_box(float *f, int stride)
 {
     box b = {0};
     b.x = f[0];
-    b.y = f[1*stride];
-    b.w = f[2*stride];
-    b.h = f[3*stride];
+    b.y = f[1 * stride];
+    b.w = f[2 * stride];
+    b.h = f[3 * stride];
     return b;
 }
 
@@ -164,21 +164,22 @@ float box_intersection(box a, box b)
 {
     float w = overlap(a.x, a.w, b.x, b.w);
     float h = overlap(a.y, a.h, b.y, b.h);
-    if(w < 0 || h < 0) return 0;
-    float area = w*h;
+    if(w < 0 || h < 0)
+        return 0;
+    float area = w * h;
     return area;
 }
 
 float box_union(box a, box b)
 {
     float i = box_intersection(a, b);
-    float u = a.w*a.h + b.w*b.h - i;
+    float u = a.w * a.h + b.w * b.h - i;
     return u;
 }
 
 float box_iou(box a, box b)
 {
-    return box_intersection(a, b)/box_union(a, b);
+    return box_intersection(a, b) / box_union(a, b);
 }
 
 float box_rmse(box a, box b)

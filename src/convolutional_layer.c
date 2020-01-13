@@ -445,7 +445,7 @@ void backward_bias(float *bias_updates, float *delta, int batch, int n, int size
     int i,b;
     for(b = 0; b < batch; ++b){
         for(i = 0; i < n; ++i){
-            bias_updates[i] += sum_array(delta+size*(i+b*n), size);
+            bias_updates[i] += sum_array(delta + size*(i + b*n), size);
         }
     }
 }
@@ -501,11 +501,11 @@ void forward_convolutional_layer(convolutional_layer l, network net)
 void backward_convolutional_layer(convolutional_layer l, network net)
 {
     int i, j;
-    int m = l.n/l.groups;
-    int n = l.size*l.size*l.c/l.groups;
-    int k = l.out_w*l.out_h;
+    int m = l.n / l.groups;
+    int n = l.size * l.size * l.c / l.groups;
+    int k = l.out_w * l.out_h;
 
-    gradient_array(l.output, l.outputs*l.batch, l.activation, l.delta);
+    gradient_array(l.output, l.outputs * l.batch, l.activation, l.delta);
 
     if(l.batch_normalize){
         backward_batchnorm_layer(l, net);

@@ -17,9 +17,9 @@ layer make_logistic_layer(int batch, int inputs)
     l.batch = batch;
     l.inputs = inputs;
     l.outputs = inputs;
-    l.loss = calloc(inputs*batch, sizeof(float));
-    l.output = calloc(inputs*batch, sizeof(float));
-    l.delta = calloc(inputs*batch, sizeof(float));
+    l.loss = calloc(inputs * batch, sizeof(float));
+    l.output = calloc(inputs * batch, sizeof(float));
+    l.delta = calloc(inputs * batch, sizeof(float));
     l.cost = calloc(1, sizeof(float));
 
     l.forward = forward_logistic_layer;

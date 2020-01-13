@@ -144,6 +144,7 @@ void gradient_array(const float *x, const int n, const ACTIVATION a, float *delt
 {
     int i;
     for(i = 0; i < n; ++i){
+        // gradient 相当于求 dz/dy, delta 是 dL/dz, 两者相乘就是 (dL/dz)*(dz/dy)
         delta[i] *= gradient(x[i], a);
     }
 } 

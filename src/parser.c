@@ -289,10 +289,12 @@ int *parse_yolo_mask(char *a, int *num) {
     int *mask = 0;
     if (a) {
         int len = strlen(a);
+        // n 表示用 , 间隔的数的个数
         int n = 1;
         int i;
         for (i = 0; i < len; ++i) {
-            if (a[i] == ',') ++n;
+            if (a[i] == ',')
+                ++n;
         }
         mask = calloc(n, sizeof(int));
         for (i = 0; i < n; ++i) {
@@ -307,7 +309,9 @@ int *parse_yolo_mask(char *a, int *num) {
 
 layer parse_yolo(list *options, size_params params) {
     int classes = option_find_int(options, "classes", 20);
+    // total 表示 anchors 的个数
     int total = option_find_int(options, "num", 1);
+    // num 表示 mask 的个数
     int num = total;
 
     char *a = option_find_str(options, "mask", 0);
@@ -323,8 +327,10 @@ layer parse_yolo(list *options, size_params params) {
     l.random = option_find_int_quiet(options, "random", 0);
 
     char *map_file = option_find_str(options, "map", 0);
-    if (map_file) l.map = read_map(map_file);
+    if (map_file)
+        l.map = read_map(map_file);
 
+    // 把 anchors 的 2 * total 个值, 赋值到 l.biases
     a = option_find_str(options, "anchors", 0);
     if (a) {
         int len = strlen(a);
@@ -841,7 +847,8 @@ network *parse_network_cfg(char *filename) {
         l.smooth = option_find_float_quiet(options, "smooth", 0);
         option_unused(options);
         net->layers[count] = l;
-        if (l.workspace_size > workspace_size) workspace_size = l.workspace_size;
+        if (l.workspace_size > workspace_size)
+            workspace_size = l.workspace_size;
         free_section(s);
         n = n->next;
         ++count;

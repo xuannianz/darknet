@@ -16,32 +16,36 @@ layer make_yolo_layer(int batch, int w, int h, int n, int total, int *mask, int 
     layer l = {0};
     l.type = YOLO;
 
-    l.n = n;
-    l.total = total;
+    l.n = n; // masks 的个数
+    l.total = total; // 所有 anchors 的个数
     l.batch = batch;
     l.h = h;
     l.w = w;
-    l.c = n*(classes + 4 + 1);
+    l.c = n * (classes + 4 + 1);
     l.out_w = l.w;
     l.out_h = l.h;
     l.out_c = l.c;
     l.classes = classes;
     l.cost = calloc(1, sizeof(float));
-    l.biases = calloc(total*2, sizeof(float));
-    if(mask) l.mask = mask;
+    // 存放 anchor 的 w,h
+    l.biases = calloc(total * 2, sizeof(float));
+    if(mask)
+        l.mask = mask;
     else{
         l.mask = calloc(n, sizeof(int));
         for(i = 0; i < n; ++i){
             l.mask[i] = i;
         }
     }
-    l.bias_updates = calloc(n*2, sizeof(float));
-    l.outputs = h*w*n*(classes + 4 + 1);
+    l.bias_updates = calloc(n * 2, sizeof(float));
+    l.outputs = h * w * n * (classes + 4 + 1);
     l.inputs = l.outputs;
-    l.truths = 90*(4 + 1);
-    l.delta = calloc(batch*l.outputs, sizeof(float));
-    l.output = calloc(batch*l.outputs, sizeof(float));
-    for(i = 0; i < total*2; ++i){
+    // 90 是 default max_boxes
+    l.truths = 90 * (4 + 1);
+    l.delta = calloc(batch * l.outputs, sizeof(float));
+    l.output = calloc(batch * l.outputs, sizeof(float));
+    // unclear 这是干啥?
+    for(i = 0; i < total * 2; ++i){
         l.biases[i] = .5;
     }
 
@@ -83,14 +87,18 @@ void resize_yolo_layer(layer *l, int w, int h)
 box get_yolo_box(float *x, float *biases, int n, int index, int i, int j, int lw, int lh, int w, int h, int stride)
 {
     box b;
-    b.x = (i + x[index + 0*stride]) / lw;
-    b.y = (j + x[index + 1*stride]) / lh;
-    b.w = exp(x[index + 2*stride]) * biases[2*n]   / w;
-    b.h = exp(x[index + 3*stride]) * biases[2*n+1] / h;
+    // x[index + 0 * stride] 是预测的是中心点 x 的偏移量, 论文中的 sigma(tx),
+    // i 是 grid 的 x 坐标, 论文中的 cx
+    // 两者相加就得到中心点 x 的坐标, /lw 表示标准化
+    b.x = (i + x[index + 0 * stride]) / lw;
+    b.y = (j + x[index + 1 * stride]) / lh;
+    b.w = exp(x[index + 2 * stride]) * biases[2 * n]   / w;
+    b.h = exp(x[index + 3 * stride]) * biases[2 * n + 1] / h;
     return b;
 }
 
-float delta_yolo_box(box truth, float *x, float *biases, int n, int index, int i, int j, int lw, int lh, int w, int h, float *delta, float scale, int stride)
+float delta_yolo_box(box truth, float *x, float *biases, int n, int index, int i, int j, int lw, int lh, int w, int h,
+        float *delta, float scale, int stride)
 {
     box pred = get_yolo_box(x, biases, n, index, i, j, lw, lh, w, h, stride);
     float iou = box_iou(pred, truth);
@@ -100,6 +108,7 @@ float delta_yolo_box(box truth, float *x, float *biases, int n, int index, int i
     float tw = log(truth.w*w / biases[2*n]);
     float th = log(truth.h*h / biases[2*n + 1]);
 
+    // note: 虽然看上去是一样的, 但是上面两个可以是 binary_crossentropy 的求导, 下面两个可以是 mse 的求导
     delta[index + 0*stride] = scale * (tx - x[index + 0*stride]);
     delta[index + 1*stride] = scale * (ty - x[index + 1*stride]);
     delta[index + 2*stride] = scale * (tw - x[index + 2*stride]);
@@ -112,41 +121,47 @@ void delta_yolo_class(float *output, float *delta, int index, int class, int cla
 {
     int n;
     if (delta[index]){
-        delta[index + stride*class] = 1 - output[index + stride*class];
-        if(avg_cat) *avg_cat += output[index + stride*class];
+        delta[index + stride * class] = 1 - output[index + stride * class];
+        if(avg_cat)
+            *avg_cat += output[index + stride * class];
         return;
     }
     for(n = 0; n < classes; ++n){
-        delta[index + stride*n] = ((n == class)?1 : 0) - output[index + stride*n];
-        if(n == class && avg_cat) *avg_cat += output[index + stride*n];
+        delta[index + stride * n] = ((n == class)?1 : 0) - output[index + stride * n];
+        if(n == class && avg_cat)
+            *avg_cat += output[index + stride * n];
     }
 }
 
 static int entry_index(layer l, int batch, int location, int entry)
 {
-    int n =   location / (l.w*l.h);
-    int loc = location % (l.w*l.h);
-    return batch*l.outputs + n*l.w*l.h*(4+l.classes+1) + entry*l.w*l.h + loc;
+    int n = location / (l.w * l.h);
+    int loc = location % (l.w * l.h);
+    return batch * l.outputs + n * l.w * l.h * (4 + l.classes + 1) + entry * l.w * l.h + loc;
 }
 
 void forward_yolo_layer(const layer l, network net)
 {
-    int i,j,b,t,n;
-    memcpy(l.output, net.input, l.outputs*l.batch*sizeof(float));
+    int i, j, b, t, n;
+    memcpy(l.output, net.input, l.outputs * l.batch * sizeof(float));
 
 #ifndef GPU
+    // 注意内存还是按照 w,h,c 的顺序存放, 那么 l.output 可以想象成 (h,w,n*(4+classes+1)) 的矩阵
     for (b = 0; b < l.batch; ++b){
         for(n = 0; n < l.n; ++n){
-            int index = entry_index(l, b, n*l.w*l.h, 0);
-            activate_array(l.output + index, 2*l.w*l.h, LOGISTIC);
-            index = entry_index(l, b, n*l.w*l.h, 4);
-            activate_array(l.output + index, (1+l.classes)*l.w*l.h, LOGISTIC);
+            int index = entry_index(l, b, n * l.w *l.h, 0);
+            // 0-1 表示中心点值, 其范围在 (0, 1) 之间, 所以用 sigmoid 激活
+            activate_array(l.output + index, 2 * l.w * l.h, LOGISTIC);
+            // 4-classes+5 表示概率, 所以也用 sigmoid 激活
+            index = entry_index(l, b, n * l.w * l.h, 4);
+            activate_array(l.output + index, (1 + l.classes) * l.w * l.h, LOGISTIC);
         }
     }
 #endif
 
     memset(l.delta, 0, l.outputs * l.batch * sizeof(float));
-    if(!net.train) return;
+    if(!net.train)
+        return;
     float avg_iou = 0;
     float recall = 0;
     float recall75 = 0;
@@ -160,22 +175,27 @@ void forward_yolo_layer(const layer l, network net)
         for (j = 0; j < l.h; ++j) {
             for (i = 0; i < l.w; ++i) {
                 for (n = 0; n < l.n; ++n) {
-                    int box_index = entry_index(l, b, n*l.w*l.h + j*l.w + i, 0);
-                    box pred = get_yolo_box(l.output, l.biases, l.mask[n], box_index, i, j, l.w, l.h, net.w, net.h, l.w*l.h);
+                    int box_index = entry_index(l, b, n * l.w * l.h + j * l.w + i, 0);
+                    box pred = get_yolo_box(l.output, l.biases, l.mask[n], box_index, i, j, l.w, l.h, net.w, net.h,
+                            l.w * l.h);
                     float best_iou = 0;
                     int best_t = 0;
                     for(t = 0; t < l.max_boxes; ++t){
-                        box truth = float_to_box(net.truth + t*(4 + 1) + b*l.truths, 1);
-                        if(!truth.x) break;
+                        box truth = float_to_box(net.truth + t * (4 + 1) + b * l.truths, 1);
+                        // 此举何意?
+                        if(!truth.x)
+                            break;
                         float iou = box_iou(pred, truth);
                         if (iou > best_iou) {
                             best_iou = iou;
                             best_t = t;
                         }
                     }
-                    int obj_index = entry_index(l, b, n*l.w*l.h + j*l.w + i, 4);
+                    int obj_index = entry_index(l, b, n * l.w * l.h + j * l.w + i, 4);
                     avg_anyobj += l.output[obj_index];
+                    // 先假设所有的 pred box 都是 bg
                     l.delta[obj_index] = 0 - l.output[obj_index];
+                    // 忽略 best iou 大于 ignore_thresh 的 pred box
                     if (best_iou > l.ignore_thresh) {
                         l.delta[obj_index] = 0;
                     }
@@ -187,15 +207,17 @@ void forward_yolo_layer(const layer l, network net)
                         int class_index = entry_index(l, b, n*l.w*l.h + j*l.w + i, 4 + 1);
                         delta_yolo_class(l.output, l.delta, class_index, class, l.classes, l.w*l.h, 0);
                         box truth = float_to_box(net.truth + best_t*(4 + 1) + b*l.truths, 1);
-                        delta_yolo_box(truth, l.output, l.biases, l.mask[n], box_index, i, j, l.w, l.h, net.w, net.h, l.delta, (2-truth.w*truth.h), l.w*l.h);
+                        delta_yolo_box(truth, l.output, l.biases, l.mask[n], box_index, i, j, l.w, l.h, net.w, net.h,
+                                l.delta, (2-truth.w*truth.h), l.w*l.h);
                     }
                 }
             }
         }
         for(t = 0; t < l.max_boxes; ++t){
-            box truth = float_to_box(net.truth + t*(4 + 1) + b*l.truths, 1);
+            box truth = float_to_box(net.truth + t * (4 + 1) + b * l.truths, 1);
 
-            if(!truth.x) break;
+            if(!truth.x)
+                break;
             float best_iou = 0;
             int best_n = 0;
             i = (truth.x * l.w);
@@ -204,8 +226,8 @@ void forward_yolo_layer(const layer l, network net)
             truth_shift.x = truth_shift.y = 0;
             for(n = 0; n < l.total; ++n){
                 box pred = {0};
-                pred.w = l.biases[2*n]/net.w;
-                pred.h = l.biases[2*n+1]/net.h;
+                pred.w = l.biases[2 * n] / net.w;
+                pred.h = l.biases[2 * n + 1] / net.h;
                 float iou = box_iou(pred, truth_shift);
                 if (iou > best_iou){
                     best_iou = iou;
@@ -215,33 +237,39 @@ void forward_yolo_layer(const layer l, network net)
 
             int mask_n = int_index(l.mask, best_n, l.n);
             if(mask_n >= 0){
-                int box_index = entry_index(l, b, mask_n*l.w*l.h + j*l.w + i, 0);
-                float iou = delta_yolo_box(truth, l.output, l.biases, best_n, box_index, i, j, l.w, l.h, net.w, net.h, l.delta, (2-truth.w*truth.h), l.w*l.h);
+                int box_index = entry_index(l, b, mask_n * l.w * l.h + j * l.w + i, 0);
+                float iou = delta_yolo_box(truth, l.output, l.biases, best_n, box_index, i, j, l.w, l.h, net.w, net.h,
+                        l.delta, (2 - truth.w * truth.h), l.w * l.h);
 
-                int obj_index = entry_index(l, b, mask_n*l.w*l.h + j*l.w + i, 4);
+                int obj_index = entry_index(l, b, mask_n * l.w * l.h + j * l.w + i, 4);
                 avg_obj += l.output[obj_index];
                 l.delta[obj_index] = 1 - l.output[obj_index];
 
-                int class = net.truth[t*(4 + 1) + b*l.truths + 4];
-                if (l.map) class = l.map[class];
-                int class_index = entry_index(l, b, mask_n*l.w*l.h + j*l.w + i, 4 + 1);
-                delta_yolo_class(l.output, l.delta, class_index, class, l.classes, l.w*l.h, &avg_cat);
+                int class = net.truth[t * (4 + 1) + b * l.truths + 4];
+                if (l.map)
+                    class = l.map[class];
+                int class_index = entry_index(l, b, mask_n * l.w * l.h + j * l.w + i, 4 + 1);
+                delta_yolo_class(l.output, l.delta, class_index, class, l.classes, l.w * l.h, &avg_cat);
 
                 ++count;
                 ++class_count;
-                if(iou > .5) recall += 1;
-                if(iou > .75) recall75 += 1;
+                if(iou > .5)
+                    recall += 1;
+                if(iou > .75)
+                    recall75 += 1;
                 avg_iou += iou;
             }
         }
     }
     *(l.cost) = pow(mag_array(l.delta, l.outputs * l.batch), 2);
-    printf("Region %d Avg IOU: %f, Class: %f, Obj: %f, No Obj: %f, .5R: %f, .75R: %f,  count: %d\n", net.index, avg_iou/count, avg_cat/class_count, avg_obj/count, avg_anyobj/(l.w*l.h*l.n*l.batch), recall/count, recall75/count, count);
+    printf("Region %d Avg IOU: %f, Class: %f, Obj: %f, No Obj: %f, .5R: %f, .75R: %f,  count: %d\n", net.index,
+            avg_iou / count, avg_cat / class_count, avg_obj / count, avg_anyobj / (l.w * l.h * l.n * l.batch),
+            recall / count, recall75 / count, count);
 }
 
 void backward_yolo_layer(const layer l, network net)
 {
-   axpy_cpu(l.batch*l.inputs, 1, l.delta, 1, net.delta, 1);
+   axpy_cpu(l.batch * l.inputs, 1, l.delta, 1, net.delta, 1);
 }
 
 void correct_yolo_boxes(detection *dets, int n, int w, int h, int netw, int neth, int relative)
