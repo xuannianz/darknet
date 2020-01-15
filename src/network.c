@@ -63,7 +63,7 @@ network *load_network(char *cfg, char *weights, int clear)
 
 size_t get_current_batch(network *net)
 {
-    size_t batch_num = (*net->seen)/(net->batch*net->subdivisions);
+    size_t batch_num = (*net->seen) / (net->batch * net->subdivisions);
     return batch_num;
 }
 
@@ -93,7 +93,8 @@ float get_current_rate(network *net)
     size_t batch_num = get_current_batch(net);
     int i;
     float rate;
-    if (batch_num < net->burn_in) return net->learning_rate * pow((float)batch_num / net->burn_in, net->power);
+    if (batch_num < net->burn_in)
+        return net->learning_rate * pow((float)batch_num / net->burn_in, net->power);
     switch (net->policy) {
         case CONSTANT:
             return net->learning_rate;
@@ -101,8 +102,11 @@ float get_current_rate(network *net)
             return net->learning_rate * pow(net->scale, batch_num/net->step);
         case STEPS:
             rate = net->learning_rate;
+            // steps 存放如 [40000, 45000], scales 存放如 [0.1, 0.1], 此时 num_steps=2
+            // 就是 batch_num 超过 40000 时, lr 乘以 0.1, 超过 45000 时, lr 再乘以 0.1.
             for(i = 0; i < net->num_steps; ++i){
-                if(net->steps[i] > batch_num) return rate;
+                if(net->steps[i] > batch_num)
+                    return rate;
                 rate *= net->scales[i];
             }
             return rate;

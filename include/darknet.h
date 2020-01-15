@@ -448,7 +448,7 @@ typedef struct network{
     int step;
     int max_batches;
     float *scales;
-    int   *steps;
+    int *steps;
     int num_steps;
     int burn_in;
 

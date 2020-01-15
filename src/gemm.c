@@ -110,7 +110,7 @@ void gemm_nt(int M, int N, int K, float ALPHA,
             for(k = 0; k < K; ++k){
                 sum += ALPHA * A[i * lda + k] * B[j * ldb + k];
             }
-            // unclear: 为什么不是直接赋值?
+            // unclear: 为什么不是直接赋值? weight_updates 是累加和, 之前 step 的 weight_updates 都通过乘上 momentum 的方式保存这里
             C[i * ldc + j] += sum;
         }
     }

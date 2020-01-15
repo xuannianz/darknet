@@ -442,10 +442,12 @@ void scale_bias(float *output, float *scales, int batch, int n, int size)
 
 void backward_bias(float *bias_updates, float *delta, int batch, int n, int size)
 {
-    int i,b;
+    int i, b;
     for(b = 0; b < batch; ++b){
         for(i = 0; i < n; ++i){
-            bias_updates[i] += sum_array(delta + size*(i + b*n), size);
+            // delta 有 b*oh*ow*oc 个值, bias_updates 有 oc 个值
+            // 那么 delta 中 oc 个 b*oh*ow 的值的和, 分别赋值给 bias_updates 的每个元素
+            bias_updates[i] += sum_array(delta + size * (i + b * n), size);
         }
     }
 }
@@ -551,21 +553,25 @@ void backward_convolutional_layer(convolutional_layer l, network net)
 
 void update_convolutional_layer(convolutional_layer l, update_args a)
 {
-    float learning_rate = a.learning_rate*l.learning_rate_scale;
+    float learning_rate = a.learning_rate * l.learning_rate_scale;
     float momentum = a.momentum;
     float decay = a.decay;
     int batch = a.batch;
 
-    axpy_cpu(l.n, learning_rate/batch, l.bias_updates, 1, l.biases, 1);
+    // /batch 是因为 bias_updates 是整个 batch delta 的叠加
+    // 第一次更新没有乘 momentum, 直接更新
+    axpy_cpu(l.n, learning_rate / batch, l.bias_updates, 1, l.biases, 1);
+    // 计算 m, 保存到 bias_updates 中. 导致第二次更新时, m 也会乘上 lr 这个和 handson-ml 中的描述不同
     scal_cpu(l.n, momentum, l.bias_updates, 1);
 
     if(l.scales){
-        axpy_cpu(l.n, learning_rate/batch, l.scale_updates, 1, l.scales, 1);
+        axpy_cpu(l.n, learning_rate / batch, l.scale_updates, 1, l.scales, 1);
         scal_cpu(l.n, momentum, l.scale_updates, 1);
     }
-
-    axpy_cpu(l.nweights, -decay*batch, l.weights, 1, l.weight_updates, 1);
-    axpy_cpu(l.nweights, learning_rate/batch, l.weight_updates, 1, l.weights, 1);
+    // weight decay 希望 weight 越接近 0, loss 越小. weight decay loss 的求导 -decay*w
+    // * batch 是因为下一步要 / batch
+    axpy_cpu(l.nweights, -decay * batch, l.weights, 1, l.weight_updates, 1);
+    axpy_cpu(l.nweights, learning_rate / batch, l.weight_updates, 1, l.weights, 1);
     scal_cpu(l.nweights, momentum, l.weight_updates, 1);
 }
 
@@ -574,8 +580,8 @@ image get_convolutional_weight(convolutional_layer l, int i)
 {
     int h = l.size;
     int w = l.size;
-    int c = l.c/l.groups;
-    return float_to_image(w,h,c,l.weights+i*h*w*c);
+    int c = l.c / l.groups;
+    return float_to_image(w, h, c,l.weights + i * h * w * c);
 }
 
 void rgbgr_weights(convolutional_layer l)

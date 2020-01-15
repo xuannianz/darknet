@@ -103,16 +103,19 @@ float delta_yolo_box(box truth, float *x, float *biases, int n, int index, int i
     box pred = get_yolo_box(x, biases, n, index, i, j, lw, lh, w, h, stride);
     float iou = box_iou(pred, truth);
 
-    float tx = (truth.x*lw - i);
-    float ty = (truth.y*lh - j);
-    float tw = log(truth.w*w / biases[2*n]);
-    float th = log(truth.h*h / biases[2*n + 1]);
+    float tx = (truth.x * lw - i);
+    float ty = (truth.y * lh - j);
+    float tw = log(truth.w * w / biases[2 * n]);
+    float th = log(truth.h * h / biases[2 * n + 1]);
 
     // note: 虽然看上去是一样的, 但是上面两个可以是 binary_crossentropy 的求导, 下面两个可以是 mse 的求导
-    delta[index + 0*stride] = scale * (tx - x[index + 0*stride]);
-    delta[index + 1*stride] = scale * (ty - x[index + 1*stride]);
-    delta[index + 2*stride] = scale * (tw - x[index + 2*stride]);
-    delta[index + 3*stride] = scale * (th - x[index + 3*stride]);
+    // binary_cross_entropy_loss 的求导结果应该是 y_pred - y_true, 那么这里使用 y_true - y_pred = -dL/dy
+    // mse 的求导 y_pred > y_true 时, dL/dy > 0, 为 2 * (y_pred - y_true), 那么这里求的是 -dL/dy
+    //   y_true > y_pred 时, dL/dy < 0, 为 2 * (y_pred - y_true), 仍是 -dL/dy
+    delta[index + 0 * stride] = scale * (tx - x[index + 0 * stride]);
+    delta[index + 1 * stride] = scale * (ty - x[index + 1 * stride]);
+    delta[index + 2 * stride] = scale * (tw - x[index + 2 * stride]);
+    delta[index + 3 * stride] = scale * (th - x[index + 3 * stride]);
     return iou;
 }
 
